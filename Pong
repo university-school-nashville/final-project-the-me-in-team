@@ -7,61 +7,215 @@ Created on Wed Nov 17 09:56:40 2021
 """
 
 import turtle
+import math
+import random
 
 s = turtle.getscreen()
 
 a = turtle.Turtle() #left paddle
 b = turtle.Turtle() #right paddle
 c = turtle.Turtle() #ball
+d = turtle.Turtle() #warpgate
+e = turtle.Turtle() #leftscorer
+f = turtle.Turtle() #rightscorer
 
-a.penup()
-b.penup()
-c.penup()
+turtles = [a,b,c,d,e,f]
+
+for i in turtles:
+    i.speed(0)
+    i.penup()
+
+d.pencolor('blue')
+d.fillcolor('blue')
+
+e.hideturtle()
+f.hideturtle()
+e.goto(-340, 285)
+f.goto(335,285)
 
 s.register_shape("paddle", ((0,0), (0, 100), (20,100), (20,0)))
 
-a.shape("paddle")
-b.shape("paddle")
-c.shape("circle")
+a.shape("paddle") #left paddle
+b.shape("paddle") #right paddle
+c.shape("circle") #ball
+d.shape("square") #warpgate
 
-b.rt(90) #right paddle
 a.rt(90) #left paddle
-b.goto(300,0)
-a.goto(-300,0)
+b.rt(90) #right paddle
+a.goto(-300,50) #left paddle start position
+b.goto(300,50) #right paddle start position
+
+powers = False
+
+warpRun = input("do you want warpgates? y for yes")#warprun tracks if the players want warpgates
+if warpRun == 'y':
+    d.goto(0,250)
+elif warpRun == 'yes':#spelling out whole word grants powers
+    powers = True
+    d.goto(0,250)
+elif warpRun == 'no':
+    powers = True
+    d.goto(0,1000)
+else:
+    d.goto(0,1000)#if no warpgate goes somewhere where it can't be triggered
 
 leftMomentum = 0 #if momentum positive, move up. Negative, move down
 rightMomentum = 0 #if momentum positive, move up. Negative, move down
 
 
-def leftPaddleUp():
+ballspeed = int(input("Select your ball speed.")) 
+#the absolute value of the speed at which the ball moves horizontally
+if ballspeed == 21:
+    powers = True #does nothing don't worry about it
+
+ballMup = 0 #ball acceleration up
+ballMright = ballspeed #ball starts moving right at the speed they input
+
+#scores start at 0
+leftScore = 0
+rightScore = 0
+
+def leftPaddleUp(): #the left paddle accelerates up
     global leftMomentum
-    leftMomentum += 5
-    a.bk(20)
+    leftMomentum = leftMomentum + 5
     
-def leftPaddleDown():
+def leftPaddleDown(): #the left paddle accelerates down
     global leftMomentum
-    leftMomentum += -5
-
-def rightPaddleUp():
-    global rightMomentum
-    rightMomentum += 5
+    leftMomentum = leftMomentum - 5
     
-def rightPaddleDown():
-    global rightMomentum
-    rightMomentum += -5
+def leftStop(): #the left paddle starts braking
+    global leftMomentum
+    leftMomentum = leftMomentum*.5
     
-s.onkeypress(leftPaddleUp, 'w')
-s.onkeypress(leftPaddleDown, 's')
-s.onkeypress(rightPaddleUp, 'i')
-s.onkeypress(rightPaddleDown, 'k')
+def rightPaddleUp(): #the right paddle accelerates up
+    global rightMomentum
+    rightMomentum = rightMomentum + 5
+    
+def rightPaddleDown(): #the right paddle accelerates down
+    global rightMomentum
+    rightMomentum = rightMomentum - 5
+    
+def rightStop(): #the right paddle starts braking
+    global rightMomentum
+    rightMomentum = rightMomentum*.5
+    
+def magic(): #helps reduce lag
+    global ballMright
+    ballMright = -ballMright
 
-a.bk(leftMomentum)
-b.bk(rightMomentum)
+def ballMove(): #updates the ball position
+    global ballMright
+    global ballMup
+    rads = math.atan(ballMup/ballMright) #the angle the ball turns in radians
+    degs = math.degrees(rads) #the angle in degrees
+    c.setheading(degs) #points the ball in the right direction
+    c.fd(ballMright) #moves the ball
 
-s.listen()
+def warp():#blackout 5% ballspeed 30% randteleport 30% momentum 35%
+    global ballspeed
+    global ballMright
+    global ballMup
+    
+    chance = random.randint(1, 20)
+    if chance <= 6: #ballspeed changes for one turn
+        ballMright = ballMright*random.randint(8, 20)/10
+    elif chance >=7 and chance <=12: #ball teleports
+        c.goto(c.pos()[0], random.randint(-300, 300))
+    elif chance >= 13 and chance <= 19: #ball direction changes
+        ballMup = random.randint(-20, 20)
+    elif chance == 20:#screen goes black
+        s.bgcolor('black')
+    turtle.update()
+
+while True: 
+    s.onkeypress(leftPaddleUp, 'w') #keybindings
+    s.onkeypress(leftPaddleDown, 's')
+    s.onkeypress(leftStop, 'a')
+    s.onkeypress(rightPaddleUp, 'i')
+    s.onkeypress(rightPaddleDown, 'k')
+    s.onkeypress(rightStop, 'l')
+    if powers == True: #of no importance
+        s.onkeypress(magic, 'p')
+    
+    ballMove() #moves the ball
+    
+    a.bk(leftMomentum) #moves the paddles based on user input
+    b.bk(rightMomentum)
+    
+
+    leftHeight = a.pos()[1] #if the paddles leave the screen their acceleration gets reversed
+    if leftHeight > 350 or leftHeight <-250:
+        leftMomentum = -leftMomentum
+        
+    rightHeight = b.pos()[1]
+    if rightHeight > 350 or rightHeight <-250:
+        rightMomentum = -rightMomentum
+    
+    ballHeight = c.pos()[1] #if the ball leaves, it's acceleration up gets reversed
+    if ballHeight > 300 or ballHeight <-300:
+        ballMup = -ballMup
+        
+        
+    ballHori = c.pos()[0] #left collision code
+    if ballHeight <= leftHeight and ballHeight >= leftHeight -100:
+        #if the ball is between the top and bottom of the paddle
+        if ballHori <= -290 + ballspeed and ballHori >= -290:
+            #if the ball is within one movement of the paddle
+            ballMright = -ballMright #ball turns around
+            ballMup += leftMomentum #ball starts accelerating as the paddle was
+            ballMove()
+            
+    #right collision code
+    if ballHeight <= rightHeight and ballHeight >= rightHeight -100:
+        #if the ball is between the top and bottom of the paddle
+        if ballHori >= 270 - ballspeed and ballHori <= 270:
+            #if the ball is within one movement of the paddle
+            ballMright = -ballMright #ball turns around
+            ballMup += rightMomentum #ball starts accelerating as the paddle was
+            ballMove()
+    
+    warpHeight = d.pos()[1]
+    #collision code with the warpgate
+    if ballHeight <= warpHeight + 20 and ballHeight >= warpHeight - 20:
+        if ballHori <= ballspeed and ballHori >= -ballspeed:
+            warp() #runs the warp function
+            d.goto(0,random.randint(-300,300)) #warpgate teleports
+            
+    
+    
+    #adding ballspeed to if of win code so the ball will get hit before scoring at high speeds
+    if ballHori > 400 + ballspeed: #scoring on the right player code
+        leftScore +=1 #left gets a point
+        rightMomentum,leftMomentum,ballMup = 0,0,0 #acceleration resets
+        ballMright = -ballspeed #scorer serves, so the ball goes to the left
+        c.goto(0,0) #all position reset
+        a.goto(-300,50)
+        b.goto(300,50)
+        s.bgcolor('white')
+        e.stamp()
+        e.fd(15)
+        if leftScore >= 5: #left winning code
+            print("Left wins", leftScore, "to", rightScore)
+            turtle.done()
+        else:
+            print("Left has", leftScore, "points")
+            
+    if ballHori < -400-ballspeed: #scoring on the left player code
+        rightScore +=1 #right gets a point
+        rightMomentum,leftMomentum,ballMup = 0,0,0 #acceleration resets
+        ballMright = ballspeed #ball starts moving right
+        c.goto(0,0) #ball + paddles reset
+        a.goto(-300,50)
+        b.goto(300,50)
+        s.bgcolor('white')
+        f.stamp()
+        f.bk(15)
+        if rightScore >= 5: #right win code
+            print("Right wins", rightScore, "to", leftScore)
+            turtle.done()
+        else:
+            print("Right has", rightScore, "points")
+
+    s.listen()
 turtle.done()
-
-
-
-
 
